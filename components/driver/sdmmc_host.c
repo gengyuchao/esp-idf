@@ -23,6 +23,7 @@
 #include "driver/sdmmc_host.h"
 #include "driver/periph_ctrl.h"
 #include "sdmmc_private.h"
+#include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "soc/sdmmc_periph.h"
 
@@ -636,3 +637,4 @@ esp_err_t sdmmc_host_pullup_en(int slot, int width)
     }
     return ESP_OK;
 }
+

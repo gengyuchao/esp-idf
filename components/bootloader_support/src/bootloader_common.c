@@ -17,14 +17,22 @@
 #include "sdkconfig.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#if CONFIG_IDF_TARGET_ESP32
+#include "esp32/rom/spi_flash.h"
 #include "esp32/rom/crc.h"
 #include "esp32/rom/gpio.h"
-#include "esp_secure_boot.h"
+#elif CONFIG_IDF_TARGET_ESP32S2BETA
+#include "esp32s2beta/rom/spi_flash.h"
+#include "esp32s2beta/rom/crc.h"
+#include "esp32s2beta/rom/ets_sys.h"
+#include "esp32s2beta/rom/gpio.h"
+#endif
 #include "esp_flash_partitions.h"
 #include "bootloader_flash.h"
 #include "bootloader_common.h"
 #include "soc/gpio_periph.h"
 #include "soc/rtc.h"
+#include "soc/efuse_reg.h"
 #include "esp_image_format.h"
 #include "bootloader_sha.h"
 #include "sys/param.h"
@@ -271,6 +279,24 @@ void bootloader_common_vddsdio_configure(void)
 #endif // CONFIG_BOOTLOADER_VDDSDIO_BOOST
 }
 
+
+esp_err_t bootloader_common_check_chip_validity(const esp_image_header_t* img_hdr, esp_image_type type)
+{
+    esp_err_t err = ESP_OK;
+    esp_chip_id_t chip_id = CONFIG_IDF_FIRMWARE_CHIP_ID;
+    if (chip_id != img_hdr->chip_id) {
+        ESP_LOGE(TAG, "mismatch chip ID, expected %d, found %d", chip_id, img_hdr->chip_id);
+        err = ESP_FAIL;
+    }
+    uint8_t revision = bootloader_common_get_chip_revision();
+    if (revision < img_hdr->min_chip_rev) {
+        ESP_LOGE(TAG, "can't run on lower chip revision, expected %d, found %d", revision, img_hdr->min_chip_rev);
+        err = ESP_FAIL;
+    } else if (revision != img_hdr->min_chip_rev) {
+        ESP_LOGI(TAG, "chip revision: %d, min. %s chip revision: %d", revision, type == ESP_IMAGE_BOOTLOADER ? "bootloader" : "application", img_hdr->min_chip_rev);
+    }
+    return err;
+}
 
 #if defined( CONFIG_BOOTLOADER_SKIP_VALIDATE_IN_DEEP_SLEEP ) || defined( CONFIG_BOOTLOADER_CUSTOM_RESERVE_RTC )
 

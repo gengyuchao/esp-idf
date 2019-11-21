@@ -44,6 +44,7 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
 
         case WEBSOCKET_EVENT_DATA:
             ESP_LOGI(TAG, "WEBSOCKET_EVENT_DATA");
+            ESP_LOGI(TAG, "Received opcode=%d", data->op_code);
             ESP_LOGW(TAG, "Received=%.*s\r\n", data->data_len, (char*)data->data_ptr);
             break;
         case WEBSOCKET_EVENT_ERROR:
@@ -89,7 +90,7 @@ void app_main(void)
     esp_log_level_set("TRANS_TCP", ESP_LOG_DEBUG);
 
     ESP_ERROR_CHECK(nvs_flash_init());
-    tcpip_adapter_init();
+    esp_netif_init();
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.

@@ -204,10 +204,13 @@ menu "Bootloader config"
     config BOOTLOADER_APP_SEC_VER_SIZE_EFUSE_FIELD
         int "Size of the efuse secure version field"
         depends on BOOTLOADER_APP_ANTI_ROLLBACK
-        range 1 32
-        default 32
+        range 1 32 if IDF_TARGET_ESP32
+        default 32 if IDF_TARGET_ESP32
+        range 1 16 if IDF_TARGET_ESP32S2BETA
+        default 16 if IDF_TARGET_ESP32S2BETA
         help
-            The size of the efuse secure version field. Its length is limited to 32 bits.
+            The size of the efuse secure version field.
+            Its length is limited to 32 bits for ESP32 and 16 bits for ESP32S2BETA.
             This determines how many times the security version can be increased.
 
     config BOOTLOADER_EFUSE_SECURE_VERSION_EMULATE
@@ -281,12 +284,15 @@ menu "Security features"
     config SECURE_SIGNED_ON_UPDATE
         bool
         default y
-        select MBEDTLS_ECP_DP_SECP256R1_ENABLED
         depends on SECURE_BOOT_ENABLED || SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT
 
     config SECURE_SIGNED_APPS
         bool
         default y
+        select MBEDTLS_ECP_DP_SECP256R1_ENABLED
+        select MBEDTLS_ECP_C
+        select MBEDTLS_ECDH_C
+        select MBEDTLS_ECDSA_C
         depends on SECURE_SIGNED_ON_BOOT || SECURE_SIGNED_ON_UPDATE
 
 
@@ -385,7 +391,7 @@ menu "Security features"
     config SECURE_BOOT_SIGNING_KEY
         string "Secure boot private signing key"
         depends on SECURE_BOOT_BUILD_SIGNED_BINARIES
-        default secure_boot_signing_key.pem
+        default "secure_boot_signing_key.pem"
         help
             Path to the key file used to sign app images.
 
@@ -401,7 +407,7 @@ menu "Security features"
     config SECURE_BOOT_VERIFICATION_KEY
         string "Secure boot public signature verification key"
         depends on SECURE_SIGNED_APPS && !SECURE_BOOT_BUILD_SIGNED_BINARIES
-        default signature_verification_key.bin
+        default "signature_verification_key.bin"
         help
             Path to a public key file used to verify signed images. This key is compiled into the bootloader and/or
             app, to verify app images.
@@ -415,7 +421,7 @@ menu "Security features"
     choice SECURE_BOOTLOADER_KEY_ENCODING
         bool "Hardware Key Encoding"
         depends on SECURE_BOOTLOADER_REFLASHABLE
-        default SECURE_BOOTLOADER_NO_ENCODING
+        default SECURE_BOOTLOADER_KEY_ENCODING_256BIT
         help
 
             In reflashable secure bootloader mode, a hardware key is derived from the signing key (with SHA-256) and
@@ -458,6 +464,26 @@ menu "Security features"
 
             Read https://docs.espressif.com/projects/esp-idf/en/latest/security/flash-encryption.html
             before enabling.
+
+    choice SECURE_FLASH_ENCRYPTION_KEYSIZE
+        bool "Size of generated AES-XTS key"
+        default SECURE_FLASH_ENCRYPTION_AES128
+        depends on IDF_TARGET_ESP32S2BETA && SECURE_FLASH_ENC_ENABLED
+        help
+            Size of generated AES-XTS key.
+
+            AES-128 uses a 256-bit key (32 bytes) which occupies one Efuse key block.
+            AES-256 uses a 512-bit key (64 bytes) which occupies two Efuse key blocks.
+
+            This setting is ignored if either type of key is already burned to Efuse before the first boot.
+            In this case, the pre-burned key is used and no new key is generated.
+
+        config SECURE_FLASH_ENCRYPTION_AES128
+            bool "AES-128 (256-bit key)"
+
+        config SECURE_FLASH_ENCRYPTION_AES256
+            bool "AES-256 (512-bit key)"
+    endchoice
 
     choice SECURE_FLASH_ENCRYPTION_MODE
         bool "Enable usage mode"

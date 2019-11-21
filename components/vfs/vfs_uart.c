@@ -25,7 +25,11 @@
 #include "driver/uart.h"
 #include "sdkconfig.h"
 #include "driver/uart_select.h"
+#if CONFIG_IDF_TARGET_ESP32
 #include "esp32/rom/uart.h"
+#elif CONFIG_IDF_TARGET_ESP32S2BETA
+#include "esp32s2beta/rom/uart.h"
+#endif
 
 // TODO: make the number of UARTs chip dependent
 #define UART_NUM SOC_UART_NUM
@@ -155,7 +159,11 @@ static void uart_tx_char(int fd, int c)
     while (uart->status.txfifo_cnt >= 127) {
         ;
     }
+#if CONFIG_IDF_TARGET_ESP32
     uart->fifo.rw_byte = c;
+#elif CONFIG_IDF_TARGET_ESP32S2BETA
+    uart->ahb_fifo.rw_byte = c;
+#endif
 }
 
 static void uart_tx_char_via_driver(int fd, int c)
@@ -170,7 +178,11 @@ static int uart_rx_char(int fd)
     if (uart->status.rxfifo_cnt == 0) {
         return NONE;
     }
+#if CONFIG_IDF_TARGET_ESP32
     return uart->fifo.rw_byte;
+#elif CONFIG_IDF_TARGET_ESP32S2BETA
+    return READ_PERI_REG(UART_FIFO_AHB_REG(fd));
+#endif
 }
 
 static int uart_rx_char_via_driver(int fd)
@@ -474,16 +486,16 @@ static esp_err_t uart_end_select(void *end_select_args)
 {
     uart_select_args_t *args = end_select_args;
 
-    if (args) {
-        free(args);
-    }
-
     portENTER_CRITICAL(uart_get_selectlock());
     esp_err_t ret = unregister_select(args);
     for (int i = 0; i < UART_NUM; ++i) {
         uart_set_select_notif_callback(i, NULL);
     }
     portEXIT_CRITICAL(uart_get_selectlock());
+
+    if (args) {
+        free(args);
+    }
 
     return ret;
 }

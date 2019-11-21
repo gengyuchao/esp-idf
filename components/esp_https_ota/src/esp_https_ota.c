@@ -17,6 +17,7 @@
 #include <string.h>
 #include <esp_https_ota.h>
 #include <esp_log.h>
+#include <esp_ota_ops.h>
 
 #define IMAGE_HEADER_SIZE sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t) + 1
 #define DEFAULT_OTA_BUF_SIZE IMAGE_HEADER_SIZE
@@ -263,7 +264,7 @@ esp_err_t esp_https_ota_perform(esp_https_ota_handle_t https_ota_handle)
                                              handle->ota_upgrade_buf,
                                              handle->ota_upgrade_buf_size);
             if (data_read == 0) {
-                ESP_LOGI(TAG, "Connection closed, all data received");
+                ESP_LOGI(TAG, "Connection closed");
             } else if (data_read < 0) {
                 ESP_LOGE(TAG, "Error: SSL data read error");
                 return ESP_FAIL;

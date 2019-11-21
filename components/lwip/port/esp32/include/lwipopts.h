@@ -231,7 +231,7 @@
 
 #define LWIP_DHCP_IP_ADDR_RESTORE()     dhcp_ip_addr_restore(netif)
 #define LWIP_DHCP_IP_ADDR_STORE()       dhcp_ip_addr_store(netif)
-#define LWIP_DHCP_IP_ADDR_ERASE()       dhcp_ip_addr_erase(esp_netif[tcpip_if])
+#define LWIP_DHCP_IP_ADDR_ERASE(esp_netif)       dhcp_ip_addr_erase(esp_netif)
 
 #endif
 
@@ -324,6 +324,11 @@
  *         for the event. This is the default.
 */
 #define TCP_MSS                         CONFIG_LWIP_TCP_MSS
+
+/**
+ * TCP_TMR_INTERVAL: TCP timer interval
+ */
+#define TCP_TMR_INTERVAL                CONFIG_LWIP_TCP_TMR_INTERVAL
 
 /**
  * TCP_MSL: The maximum segment lifetime in milliseconds
@@ -549,6 +554,12 @@
  */
 #define SO_REUSE                        CONFIG_LWIP_SO_REUSE
 
+
+/**
+ * LWIP_DNS_SUPPORT_MDNS_QUERIES==1: Enable mDNS queries in hostname resolution.
+ * This option is set via menuconfig.
+ */
+#define LWIP_DNS_SUPPORT_MDNS_QUERIES   CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES
 /**
  * SO_REUSE_RXTOALL==1: Pass a copy of incoming broadcast/multicast packets
  * to all local matches if SO_REUSEADDR is turned on.
