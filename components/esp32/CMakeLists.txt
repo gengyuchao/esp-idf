@@ -66,7 +66,7 @@ else()
     # driver is a public requirement because esp_sleep.h uses gpio_num_t & touch_pad_t
     # tcpip_adapter is a public requirement because esp_event.h uses tcpip_adapter types
     set(COMPONENT_PRIV_REQUIRES
-        app_trace bootloader_support ethernet log mbedtls nvs_flash
+        app_trace app_update bootloader_support ethernet log mbedtls nvs_flash
         pthread smartconfig_ack spi_flash vfs wpa_supplicant xtensa-debug-module)
 
     register_component()
@@ -78,6 +78,13 @@ else()
         target_link_libraries(esp32 "-L ${CMAKE_CURRENT_SOURCE_DIR}/ld/wifi_iram_opt")
     else()
         target_link_libraries(esp32 "-L ${CMAKE_CURRENT_SOURCE_DIR}/ld/wifi_iram_noopt")
+    endif()
+
+    # Add a different linker search path depending on WiFi RX optimisations
+    if (CONFIG_ESP32_WIFI_RX_IRAM_OPT)
+        target_link_libraries(esp32 "-L ${CMAKE_CURRENT_SOURCE_DIR}/ld/wifi_rx_iram_opt")
+    else()
+        target_link_libraries(esp32 "-L ${CMAKE_CURRENT_SOURCE_DIR}/ld/wifi_rx_iram_noopt")
     endif()
 
     if(NOT CONFIG_NO_BLOBS)

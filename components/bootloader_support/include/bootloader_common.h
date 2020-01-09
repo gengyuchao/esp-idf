@@ -14,6 +14,7 @@
 
 #pragma once
 #include "esp_flash_data_types.h"
+#include "esp_image_format.h"
 
 /// Type of hold a GPIO in low state
 typedef enum {
@@ -21,6 +22,11 @@ typedef enum {
     GPIO_SHORT_HOLD = -1,   /*!< The short hold GPIO */
     GPIO_NOT_HOLD   = 0     /*!< If the GPIO input is not low */
 } esp_comm_gpio_hold_t;
+
+typedef enum {
+    ESP_IMAGE_BOOTLOADER,
+    ESP_IMAGE_APPLICATION
+} esp_image_type;
 
 /**
  * @brief Calculate crc for the OTA data partition.
@@ -93,14 +99,25 @@ bool bootloader_common_label_search(const char *list, char *label);
 esp_err_t bootloader_common_get_sha256_of_partition(uint32_t address, uint32_t size, int type, uint8_t *out_sha_256);
 
 /**
+ * @brief Get chip revision
+ *
+ * @return Chip revision number
+ */
+uint8_t bootloader_common_get_chip_revision(void);
+
+/**
+ * @brief Check if the image (bootloader and application) has valid chip ID and revision
+ *
+ * @param[in] img_hdr: image header
+ * @param[in] type: image type, bootloader or application
+ * @return
+ *      - ESP_OK: image and chip are matched well
+ *      - ESP_FAIL: image doesn't match to the chip
+ */
+esp_err_t bootloader_common_check_chip_validity(const esp_image_header_t* img_hdr, esp_image_type type);
+
+
+/**
  * @brief Configure VDDSDIO, call this API to rise VDDSDIO to 1.9V when VDDSDIO regulator is enabled as 1.8V mode.
  */
 void bootloader_common_vddsdio_configure();
-
-/**
- * @brief Set the flash CS setup and hold time.
- *
- * CS setup time is recomemded to be 1.5T, and CS hold time is recommended to be 2.5T.
- * cs_setup = 1, cs_setup_time = 0; cs_hold = 1, cs_hold_time = 1
- */
-void bootloader_common_set_flash_cs_timing();
