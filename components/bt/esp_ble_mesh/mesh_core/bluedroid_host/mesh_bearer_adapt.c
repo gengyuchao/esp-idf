@@ -1011,6 +1011,14 @@ int bt_mesh_gatts_service_start(struct bt_mesh_gatt_service *svc)
 
     return 0;
 }
+
+int bt_mesh_gatts_set_local_device_name(const char *name)
+{
+    BLE_MESH_BTM_CHECK_STATUS(BTM_SetLocalDeviceName((char *)name));
+
+    return 0;
+}
+
 #endif /* defined(CONFIG_BLE_MESH_NODE) && CONFIG_BLE_MESH_NODE */
 
 #if (CONFIG_BLE_MESH_PROVISIONER && CONFIG_BLE_MESH_PB_GATT) || \
@@ -1886,7 +1894,7 @@ int bt_mesh_update_exceptional_list(u8_t sub_code, u8_t type, void *info)
             BT_ERR("%s, NULL Provisioning Link ID", __func__);
             return -EINVAL;
         }
-        memcpy(value, info, sizeof(u32_t));
+        sys_memcpy_swap(value, info, sizeof(u32_t));
     }
 
     BT_DBG("%s, %s type 0x%x", __func__, sub_code ? "Remove" : "Add", type);

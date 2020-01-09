@@ -262,7 +262,7 @@ TEST_CASE("LEDC normal channel and timer config", "[ledc][test_env=UT_T1_LEDC]")
 // set it ignore: need to debug
 TEST_CASE("LEDC set and get frequency", "[ledc][test_env=UT_T1_LEDC][timeout=60][ignore]")
 {
-#ifdef CONFIG_IDF_TARGET_ESP32
+#if !TEMPORARY_DISABLED_FOR_TARGETS(ESP32S2BETA)
     timer_frequency_test(LEDC_CHANNEL_0, LEDC_TIMER_13_BIT, LEDC_TIMER_0, LEDC_HIGH_SPEED_MODE);
     timer_frequency_test(LEDC_CHANNEL_0, LEDC_TIMER_13_BIT, LEDC_TIMER_1, LEDC_HIGH_SPEED_MODE);
     timer_frequency_test(LEDC_CHANNEL_0, LEDC_TIMER_13_BIT, LEDC_TIMER_2, LEDC_HIGH_SPEED_MODE);
@@ -400,8 +400,12 @@ TEST_CASE("LEDC timer pause and resume", "[ledc][test_env=UT_T1_LEDC]")
     TEST_ASSERT_UINT32_WITHIN(5, count, 5000);
 }
 
-TEST_CASE("LEDC fade with time(logic analyzer)", "[ledc][ignore]")
+TEST_CASE("LEDC fade with time(logic analyzer)", "[ledc][test_env=UT_T1_LEDC]")
 {
+#ifdef CONFIG_FREERTOS_CHECK_PORT_CRITICAL_COMPLIANCE
+    return;
+#endif
+
 #ifdef CONFIG_IDF_TARGET_ESP32
     const ledc_mode_t test_speed_mode = LEDC_HIGH_SPEED_MODE;
 #elif defined CONFIG_IDF_TARGET_ESP32S2BETA
@@ -444,8 +448,12 @@ TEST_CASE("LEDC fade with time(logic analyzer)", "[ledc][ignore]")
     ledc_fade_func_uninstall();
 }
 
-TEST_CASE("LEDC fade with step(logic analyzer)", "[ledc][ignore]")
+TEST_CASE("LEDC fade with step(logic analyzer)", "[ledc][test_env=UT_T1_LEDC]")
 {
+#ifdef CONFIG_FREERTOS_CHECK_PORT_CRITICAL_COMPLIANCE
+    return;
+#endif
+
 #ifdef CONFIG_IDF_TARGET_ESP32
     const ledc_mode_t test_speed_mode = LEDC_HIGH_SPEED_MODE;
 #elif defined CONFIG_IDF_TARGET_ESP32S2BETA
