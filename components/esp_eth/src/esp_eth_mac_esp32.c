@@ -170,9 +170,11 @@ static esp_err_t emac_esp32_set_speed(esp_eth_mac_t *mac, eth_speed_t speed)
     switch (speed) {
     case ETH_SPEED_10M:
         emac_hal_set_speed(&emac->hal, EMAC_SPEED_10M);
+        ESP_LOGD(TAG, "working in 10Mbps");
         break;
     case ETH_SPEED_100M:
         emac_hal_set_speed(&emac->hal, EMAC_SPEED_100M);
+        ESP_LOGD(TAG, "working in 100Mbps");
         break;
     default:
         MAC_CHECK(false, "unknown speed", err, ESP_ERR_INVALID_ARG);
@@ -190,9 +192,11 @@ static esp_err_t emac_esp32_set_duplex(esp_eth_mac_t *mac, eth_duplex_t duplex)
     switch (duplex) {
     case ETH_DUPLEX_HALF:
         emac_hal_set_duplex(&emac->hal, EMAC_DUPLEX_HALF);
+        ESP_LOGD(TAG, "working in half duplex");
         break;
     case ETH_DUPLEX_FULL:
         emac_hal_set_duplex(&emac->hal, EMAC_DUPLEX_FULL);
+        ESP_LOGD(TAG, "working in full duplex");
         break;
     default:
         MAC_CHECK(false, "unknown duplex", err, ESP_ERR_INVALID_ARG);
@@ -244,8 +248,8 @@ static void emac_esp32_rx_task(void *arg)
     uint8_t *buffer = NULL;
     uint32_t length = 0;
     while (1) {
-        // block indefinitely until some task notifies me
-        ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
+        // block indefinitely until got notification from underlay event
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         do {
             length = ETH_MAX_PACKET_SIZE;
             buffer = malloc(length);
@@ -336,6 +340,20 @@ static esp_err_t emac_esp32_deinit(esp_eth_mac_t *mac)
     return ESP_OK;
 }
 
+static esp_err_t emac_esp32_start(esp_eth_mac_t *mac)
+{
+    emac_esp32_t *emac = __containerof(mac, emac_esp32_t, parent);
+    emac_hal_start(&emac->hal);
+    return ESP_OK;
+}
+
+static esp_err_t emac_esp32_stop(esp_eth_mac_t *mac)
+{
+    emac_esp32_t *emac = __containerof(mac, emac_esp32_t, parent);
+    emac_hal_stop(&emac->hal);
+    return ESP_OK;
+}
+
 static esp_err_t emac_esp32_del(esp_eth_mac_t *mac)
 {
     emac_esp32_t *emac = __containerof(mac, emac_esp32_t, parent);
@@ -358,6 +376,7 @@ static esp_err_t emac_esp32_del(esp_eth_mac_t *mac)
     return ESP_OK;
 }
 
+// To achieve a better performance, we put the ISR always in IRAM
 IRAM_ATTR void emac_esp32_isr_handler(void *args)
 {
     emac_hal_context_t *hal = (emac_hal_context_t *)args;
@@ -371,11 +390,16 @@ IRAM_ATTR void emac_esp32_isr_handler(void *args)
 
 esp_eth_mac_t *esp_eth_mac_new_esp32(const eth_mac_config_t *config)
 {
+    esp_err_t ret_code = ESP_OK;
     esp_eth_mac_t *ret = NULL;
     void *descriptors = NULL;
     emac_esp32_t *emac = NULL;
     MAC_CHECK(config, "can't set mac config to null", err, NULL);
-    emac = calloc(1, sizeof(emac_esp32_t));
+    if (config->flags & ETH_MAC_FLAG_WORK_WITH_CACHE_DISABLE) {
+        emac = heap_caps_calloc(1, sizeof(emac_esp32_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    } else {
+        emac = calloc(1, sizeof(emac_esp32_t));
+    }
     MAC_CHECK(emac, "calloc emac failed", err, NULL);
     /* alloc memory for ethernet dma descriptor */
     uint32_t desc_size = CONFIG_ETH_DMA_RX_BUFFER_NUM * sizeof(eth_dma_rx_descriptor_t) +
@@ -404,6 +428,8 @@ esp_eth_mac_t *esp_eth_mac_new_esp32(const eth_mac_config_t *config)
     emac->parent.set_mediator = emac_esp32_set_mediator;
     emac->parent.init = emac_esp32_init;
     emac->parent.deinit = emac_esp32_deinit;
+    emac->parent.start = emac_esp32_start;
+    emac->parent.stop = emac_esp32_stop;
     emac->parent.del = emac_esp32_del;
     emac->parent.write_phy_reg = emac_esp32_write_phy_reg;
     emac->parent.read_phy_reg = emac_esp32_read_phy_reg;
@@ -416,9 +442,14 @@ esp_eth_mac_t *esp_eth_mac_new_esp32(const eth_mac_config_t *config)
     emac->parent.transmit = emac_esp32_transmit;
     emac->parent.receive = emac_esp32_receive;
     /* Interrupt configuration */
-    MAC_CHECK(esp_intr_alloc(ETS_ETH_MAC_INTR_SOURCE, ESP_INTR_FLAG_IRAM, emac_esp32_isr_handler,
-                             &emac->hal, &(emac->intr_hdl)) == ESP_OK,
-              "alloc emac interrupt failed", err, NULL);
+    if (config->flags & ETH_MAC_FLAG_WORK_WITH_CACHE_DISABLE) {
+        ret_code = esp_intr_alloc(ETS_ETH_MAC_INTR_SOURCE, ESP_INTR_FLAG_IRAM,
+                                  emac_esp32_isr_handler, &emac->hal, &(emac->intr_hdl));
+    } else {
+        ret_code = esp_intr_alloc(ETS_ETH_MAC_INTR_SOURCE, 0,
+                                  emac_esp32_isr_handler, &emac->hal, &(emac->intr_hdl));
+    }
+    MAC_CHECK(ret_code == ESP_OK, "alloc emac interrupt failed", err, NULL);
 #ifdef CONFIG_PM_ENABLE
     MAC_CHECK(esp_pm_lock_create(ESP_PM_APB_FREQ_MAX, 0, "emac_esp32", &emac->pm_lock) == ESP_OK,
               "create pm lock failed", err, NULL);

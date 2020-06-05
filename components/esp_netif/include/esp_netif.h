@@ -255,12 +255,31 @@ void esp_netif_action_got_ip(void *esp_netif, esp_event_base_t base, int32_t eve
 
  * @param[in]  esp_netif Handle to esp-netif instance
  * @param[in]  mac Desired mac address for the related network interface
- * @return     ESP_OK
+ * @return
+ *         - ESP_OK - success
+ *         - ESP_ERR_ESP_NETIF_IF_NOT_READY - interface status error
+ *         - ESP_ERR_NOT_SUPPORTED - mac not supported on this interface
  */
 esp_err_t esp_netif_set_mac(esp_netif_t *esp_netif, uint8_t mac[]);
 
 /**
+ * @brief Get the mac address for the interface instance
+
+ * @param[in]  esp_netif Handle to esp-netif instance
+ * @param[out]  mac Resultant mac address for the related network interface
+ * @return
+ *         - ESP_OK - success
+ *         - ESP_ERR_ESP_NETIF_IF_NOT_READY - interface status error
+ *         - ESP_ERR_NOT_SUPPORTED - mac not supported on this interface
+ */
+esp_err_t esp_netif_get_mac(esp_netif_t *esp_netif, uint8_t mac[]);
+
+/**
  * @brief  Set the hostname of an interface
+ *
+ * The configured hostname overrides the default configuration value CONFIG_LWIP_LOCAL_HOSTNAME.
+ * Please note that when the hostname is altered after interface started/connected the changes
+ * would only be reflected once the interface restarts/reconnects
  *
  * @param[in]  esp_netif Handle to esp-netif instance
  * @param[in]   hostname New hostname for the interface. Maximum length 32 bytes.
@@ -382,6 +401,22 @@ esp_err_t esp_netif_set_old_ip_info(esp_netif_t *esp_netif, const esp_netif_ip_i
  *         implementation specific index of interface represented with supplied esp_netif
  */
 int esp_netif_get_netif_impl_index(esp_netif_t *esp_netif);
+
+/**
+ * @brief  Get net interface name from network stack implementation
+ *
+ * @note This name could be used in `setsockopt()` to bind socket with appropriate interface
+ *
+ * @param[in]  esp_netif Handle to esp-netif instance
+ * @param[out]  name Interface name as specified in underlying TCP/IP stack. Note that the
+ * actual name will be copied to the specified buffer, which must be allocated to hold
+ * maximum interface name size (6 characters for lwIP)
+ *
+ * @return
+ *         - ESP_OK
+ *         - ESP_ERR_ESP_NETIF_INVALID_PARAMS
+*/
+esp_err_t esp_netif_get_netif_impl_name(esp_netif_t *esp_netif, char* name);
 
 /**
  * @}
@@ -614,6 +649,33 @@ esp_err_t esp_netif_create_ip6_linklocal(esp_netif_t *esp_netif);
 esp_err_t esp_netif_get_ip6_linklocal(esp_netif_t *esp_netif, esp_ip6_addr_t *if_ip6);
 
 /**
+ * @brief  Get interface global IPv6 address
+ *
+ * If the specified interface is up and a preferred global IPv6 address
+ * has been created for the interface, return a copy of it.
+ *
+ * @param[in]  esp_netif Handle to esp-netif instance
+ * @param[out] if_ip6 IPv6 information will be returned in this argument if successful.
+ *
+ * @return
+ *      - ESP_OK
+ *      - ESP_FAIL If interface is down, does not have a global IPv6 address,
+ *        or the global IPv6 address is not a preferred address.
+ */
+esp_err_t esp_netif_get_ip6_global(esp_netif_t *esp_netif, esp_ip6_addr_t *if_ip6);
+
+/**
+ * @brief  Get all IPv6 addresses of the specified interface
+ *
+ * @param[in]  esp_netif Handle to esp-netif instance
+ * @param[out] if_ip6 Array of IPv6 addresses will be copied to the argument
+ *
+ * @return
+ *      number of returned IPv6 addresses
+ */
+int esp_netif_get_all_ip6(esp_netif_t *esp_netif, esp_ip6_addr_t if_ip6[]);
+
+/**
  * @brief Sets IPv4 address to the specified octets
  *
  * @param[out] addr IP address to be set
@@ -702,6 +764,15 @@ const char *esp_netif_get_ifkey(esp_netif_t *esp_netif);
  * @return Enumerated type of this interface, such as station, AP, ethernet
  */
 const char *esp_netif_get_desc(esp_netif_t *esp_netif);
+
+/**
+ * @brief Returns configured routing priority number
+ *
+ * @param[in]  esp_netif Handle to esp-netif instance
+ *
+ * @return Integer representing the instance's route-prio, or -1 if invalid paramters
+ */
+int esp_netif_get_route_prio(esp_netif_t *esp_netif);
 
 /**
  * @brief Returns configured event for this esp-netif instance and supplied event type
